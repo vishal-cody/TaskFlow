@@ -143,7 +143,7 @@ export function JobDetail() {
                 <CardTitle>Result Data</CardTitle>
               </CardHeader>
               <CardContent>
-                <pre className="text-sm font-mono bg-base p-4 rounded-md overflow-x-auto" style={{ backgroundColor: '#000', padding: '1rem', borderRadius: '0.375rem' }}>
+                <pre className="text-sm font-mono bg-base p-4 rounded-md overflow-x-auto" style={{ backgroundColor: '#1e293b', color: '#f8fafc', padding: '1rem', borderRadius: '0.375rem', maxHeight: '200px', overflowY: 'auto' }}>
                   {JSON.stringify(job.result, null, 2)}
                 </pre>
               </CardContent>

@@ -90,7 +90,8 @@ tr:hover {
 }
 
 .logContainer {
-  background-color: #000;
+  background-color: #1e293b;
+  color: #f8fafc;
   border-radius: var(--radius-md);
   padding: var(--spacing-4);
   font-family: var(--font-family-mono);
