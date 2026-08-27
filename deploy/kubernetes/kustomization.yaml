@@ -1,0 +1,29 @@
+# Kustomization — apply the entire stack with:
+#   kubectl apply -k deploy/kubernetes/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: jobplatform
+
+resources:
+  - 00-namespace.yaml
+  - 01-configmap.yaml
+  - 02-secrets.yaml
+  - postgres/statefulset.yaml
+  - rabbitmq/statefulset.yaml
+  - redis/deployment.yaml
+  - api/migration-job.yaml
+  - api/deployment.yaml
+  - worker/deployment.yaml
+  - frontend/deployment.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - prometheus/configmap.yaml
+  - prometheus/deployment.yaml
+  - prometheus/rbac.yaml
+  - grafana/datasources.yaml
+  - grafana/dashboards.yaml
+  - grafana/deployment.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize

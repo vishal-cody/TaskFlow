@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: jobplatform
+  labels:
+    app.kubernetes.io/part-of: jobplatform
+data:
+  SERVER_PORT: "8080"
+  SERVER_SHUTDOWN_TIMEOUT: "15s"
+  DATABASE_MAX_CONNS: "20"
+  JWT_EXPIRY: "24h"
+  RATE_LIMIT_REQUESTS: "100"
+  RATE_LIMIT_WINDOW_SECONDS: "60"
+  LOG_LEVEL: "info"
+  # Internal cluster DNS names — no secrets here.
+  DATABASE_HOST: "postgres.jobplatform.svc.cluster.local"
+  RABBITMQ_HOST: "rabbitmq.jobplatform.svc.cluster.local"
+  REDIS_HOST: "redis.jobplatform.svc.cluster.local"

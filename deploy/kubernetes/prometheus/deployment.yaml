@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: jobplatform
+  labels:
+    app: prometheus
+    app.kubernetes.io/part-of: jobplatform
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: jobplatform
+  labels:
+    app: prometheus
+    app.kubernetes.io/part-of: jobplatform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      # Need RBAC for kubernetes_sd_configs to read endpoints and pods
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.53.1
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-config

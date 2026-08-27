@@ -1,0 +1,158 @@
+# =============================================================================
+# Distributed Job Processing Platform — Docker Compose
+# =============================================================================
+#
+# Usage:
+#   docker compose up -d          # Start all services
+#   docker compose logs -f api    # Follow API logs
+#   docker compose down -v        # Stop all and remove volumes
+#
+# Architecture:
+#   frontend (nginx:80) → api (:8080) → postgres / rabbitmq / redis
+#                                    ↘ outbox publisher → rabbitmq
+#   worker → rabbitmq → postgres
+# =============================================================================
+
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jobplatform
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Database Migrations ─────────────────────────────────────────────────────
+
+  migrate:
+    image: migrate/migrate:v4.18.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/migrations:/migrations
+    command: >
+      -path=/migrations
+      -database=postgres://postgres:postgres@postgres:5432/jobplatform?sslmode=disable
+      up
+    # Runs once and exits. Not a long-running service.
+    restart: "no"
+
+  # ── Application Services ────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      SERVER_SHUTDOWN_TIMEOUT: 15s
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/jobplatform?sslmode=disable
+      DATABASE_MAX_CONNS: 20
+      JWT_SECRET: super-secret-change-in-production
+      JWT_EXPIRY: 24h
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_REQUESTS: 100
+      RATE_LIMIT_WINDOW_SECONDS: 60
+      LOG_LEVEL: info
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/jobplatform?sslmode=disable
+      DATABASE_MAX_CONNS: 10
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: super-secret-change-in-production
+      JWT_EXPIRY: 24h
+      LOG_LEVEL: info
+    # Scale workers: docker compose up -d --scale worker=3
+    deploy:
+      replicas: 2
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+# ── Persistent Volumes ──────────────────────────────────────────────────────
+
+volumes:
+  pgdata:
+  rabbitmqdata:
+  redisdata:

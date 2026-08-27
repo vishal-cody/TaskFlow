@@ -1,0 +1,40 @@
+# One-shot K8s Job that runs database migrations before the API starts.
+# The API deployment has an initContainer that waits for this to complete.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: jobplatform
+  labels:
+    app: db-migrate
+    app.kubernetes.io/part-of: jobplatform
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: db-migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: migrate/migrate:v4.18.1
+          command:
+            - "migrate"
+            - "-path=/migrations"
+            - "-database"
+            - "$(DATABASE_URL)"
+            - "up"
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: DATABASE_URL
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      volumes:
+        - name: migrations
+          configMap:
+            name: migrations

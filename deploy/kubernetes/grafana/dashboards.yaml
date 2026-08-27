@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-provider
+  namespace: jobplatform
+  labels:
+    app.kubernetes.io/part-of: jobplatform
+data:
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+      - name: 'Job Platform'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-jobplatform
+  namespace: jobplatform
+  labels:
+    app.kubernetes.io/part-of: jobplatform
+data:
+  jobplatform.json: |
+    {
+      "title": "Job Platform Dashboard",
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Jobs In Flight",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+          "targets": [
+            { "expr": "sum(jobplatform_jobs_in_flight)", "refId": "A" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Job Processing Duration (Seconds)",
+          "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+          "targets": [
+            { "expr": "histogram_quantile(0.95, sum(rate(jobplatform_jobs_processing_duration_seconds_bucket[5m])) by (le))", "refId": "A", "legendFormat": "p95" },
+            { "expr": "histogram_quantile(0.50, sum(rate(jobplatform_jobs_processing_duration_seconds_bucket[5m])) by (le))", "refId": "B", "legendFormat": "p50" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Latency (p99)",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            { "expr": "histogram_quantile(0.99, sum(rate(jobplatform_http_request_duration_seconds_bucket[5m])) by (le, path))", "refId": "A", "legendFormat": "{{path}}" }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Jobs Processed Rate",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            { "expr": "sum(rate(jobplatform_jobs_processed_total[5m])) by (status)", "refId": "A", "legendFormat": "{{status}}" }
+          ]
+        }
+      ],
+      "schemaVersion": 39,
+      "version": 1
+    }
