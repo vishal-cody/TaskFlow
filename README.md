@@ -33,9 +33,9 @@ A distributed job processing platform built with Go, React, PostgreSQL, RabbitMQ
 
 ## Overview
 
-TaskFlow is a robust, asynchronous job processing system designed to decouple slow, resource-intensive tasks from the main HTTP request cycle. When a client submits a heavy task (like generating a large report or processing batch data), the API immediately acknowledges the request and safely queues it for background execution. 
+TaskFlow is an asynchronous job processing system designed to move slow, resource-intensive work out of the main HTTP request cycle. When a client submits a heavy task (like generating a large report or processing batch data), the API immediately acknowledges the request and safely queues it for background execution.
 
-This architecture allows the system to scale its web and worker tiers independently, ensuring that sudden spikes in job submissions do not crash the API servers. Real-time status updates and execution logs are tracked in the database and surfaced via a React dashboard.
+The API and worker tiers can be scaled independently. Job status and execution logs are persisted in PostgreSQL and surfaced through the React dashboard.
 
 ## Key Features
 
@@ -52,7 +52,6 @@ This architecture allows the system to scale its web and worker tiers independen
 | **Infrastructure** | Docker Compose, Kubernetes manifests, Terraform |
 
 ## Architecture
-
 
 ```mermaid
 flowchart LR
@@ -105,7 +104,7 @@ Once a job is submitted, it enters the `queued` state. A worker picks it up and 
 
 ## Transactional Outbox
 
-To guarantee that jobs are never lost between the database and the message broker, TaskFlow uses the Transactional Outbox pattern.
+TaskFlow uses the Transactional Outbox pattern to keep job persistence and message publication reliable.
 
 ```text
 API Request
@@ -418,6 +417,3 @@ Kubernetes provides container orchestration, service discovery, health check pro
 ## License
 
 MIT
-#   T a s k F l o w 
- 
- 
